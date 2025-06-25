@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Document Search System{% endblock %}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .search-highlight {
+            background-color: #fef08a;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .loading {
+            display: none;
+        }
+        .loading.show {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-blue-600 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Document Search System</h1>
+            <div class="space-x-4">
+                <a href="{{ url_for('index') }}" class="hover:text-blue-200">Search</a>
+                <a href="{{ url_for('upload_file') }}" class="hover:text-blue-200">Upload Documents</a>
+                <button onclick="loadStats()" class="hover:text-blue-200">Statistics</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-6">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <div id="statsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+                <h3 class="text-lg font-bold mb-4">System Statistics</h3>
+                <div id="statsContent">
+                    <div class="animate-pulse">
+                        <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                        <div class="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                        <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                    </div>
+                </div>
+                <div class="mt-4 text-right">
+                    <button onclick="closeStats()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Statistics functionality
+        function loadStats() {
+            document.getElementById('statsModal').classList.remove('hidden');
+
+            fetch('/stats')
+            .then(response => response.json())
+            .then(data => {
+                const statsContent = document.getElementById('statsContent');
+                statsContent.innerHTML = `
+                    <div class="space-y-2">
+                        <p><strong>Total Documents:</strong> ${data.document_count}</p>
+                        <p><strong>Unique Words:</strong> ${data.unique_words}</p>
+                        <p><strong>Total Words:</strong> ${data.total_words}</p>
+                        <div class="mt-4">
+                            <h4 class="font-bold mb-2">Top 10 Frequent Words:</h4>
+                            <div class="text-sm space-y-1">
+                                ${data.top_words.map(word => `
+                                    <div class="flex justify-between">
+                                        <span>${word[0]}</span>
+                                        <span class="text-gray-500">${word[1]} times</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            })
+            .catch(error => {
+                document.getElementById('statsContent').innerHTML = '<p class="text-red-600">Failed to load statistics.</p>';
+            });
+        }
+
+        function closeStats() {
+            document.getElementById('statsModal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

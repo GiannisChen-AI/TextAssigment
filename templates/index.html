@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <h2 class="text-2xl font-bold mb-6 text-center">Search Documents</h2>
+
+        <form id="searchForm" class="mb-6">
+            <div class="flex gap-4">
+                <input
+                    type="text"
+                    id="searchInput"
+                    placeholder="Enter search keywords..."
+                    class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                >
+                <button
+                    type="submit"
+                    class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    Search
+                </button>
+            </div>
+        </form>
+
+        <div class="text-center mb-4">
+            <p class="text-gray-600 mb-2">No documents? Try these options:</p>
+            <div class="space-x-4">
+                <a href="{{ url_for('upload_file') }}" class="text-blue-600 hover:text-blue-800">Upload your own documents</a>
+                <span class="text-gray-400">|</span>
+                <a href="{{ url_for('download_gutenberg') }}" class="text-blue-600 hover:text-blue-800">Download sample documents from Project Gutenberg</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="loading text-center py-8">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p class="mt-2 text-gray-600">Searching...</p>
+    </div>
+
+    <div id="searchResults" class="hidden">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h3 class="text-xl font-bold mb-4">Search Results</h3>
+            <div id="resultsContainer"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Search functionality
+    document.getElementById('searchForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const query = document.getElementById('searchInput').value.trim();
+        if (!query) return;
+
+        // Show loading state
+        document.getElementById('loading').classList.add('show');
+        document.getElementById('searchResults').classList.add('hidden');
+
+        // Send search request
+        fetch('/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'query=' + encodeURIComponent(query)
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('loading').classList.remove('show');
+
+            if (data.error) {
+                alert('Search error: ' + data.error);
+                return;
+            }
+
+            displayResults(data);
+        })
+        .catch(error => {
+            document.getElementById('loading').classList.remove('show');
+            alert('Search request failed: ' + error);
+        });
+    });
+
+    function displayResults(data) {
+        const resultsContainer = document.getElementById('resultsContainer');
+        const searchResults = document.getElementById('searchResults');
+
+        if (data.results.length === 0) {
+            resultsContainer.innerHTML = '<p class="text-gray-600">No relevant documents found.</p>';
+        } else {
+            let html = `<p class="text-gray-600 mb-4">Found ${data.total} relevant documents (Query: ${data.query})</p>`;
+
+            data.results.forEach(result => {
+                html += `
+                    <div class="border border-gray-200 rounded-lg p-4 mb-4">
+                        <h4 class="font-bold text-lg mb-2">${result.filename}</h4>
+                        <p class="text-sm text-gray-600 mb-2">Relevance Score: ${result.relevance_score}</p>
+                        <div class="space-y-2">
+                            ${result.matching_lines.map(line => `
+                                <div class="bg-gray-50 p-2 rounded">
+                                    <span class="text-xs text-gray-500">Line ${line.line_number}:</span>
+                                    <p class="text-sm">${line.content}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            resultsContainer.innerHTML = html;
+        }
+
+        searchResults.classList.remove('hidden');
+    }
+</script>
+{% endblock %}
